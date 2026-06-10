@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demand &amp; Forecasting Cockpit — Germany · Imperial Brands</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#101A2C; --ink-2:#1B2942; --ink-3:#28385A;
+    --canvas:#EEF0F4; --card:#FFFFFF; --line:#DDE2EA; --line-soft:#E9ECF1;
+    --text:#131A26; --muted:#5A6678; --faint:#8A93A3;
+    --signal:#E5006D; --good:#11876F; --warn:#C98A1C;
+    --good-soft:rgba(17,135,111,.12); --signal-soft:rgba(229,0,109,.12); --warn-soft:rgba(201,138,28,.14);
+    --band:rgba(40,56,90,.10);
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--canvas); color:var(--text);
+    font-family:"Inter",system-ui,sans-serif; font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased}
+  .mono{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--faint); margin:0 0 10px}
+
+  .topbar{position:sticky; top:0; z-index:40; background:var(--ink); color:#EAF0F8; border-bottom:1px solid rgba(255,255,255,.07)}
+  .topbar-inner{max-width:1320px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; gap:20px; flex-wrap:wrap}
+  .brand{display:flex; align-items:center; gap:13px; min-width:0}
+  .brand-mark{width:34px; height:34px; border-radius:8px; flex:none;
+    background:linear-gradient(150deg,var(--signal),#8E0044); display:flex; align-items:center; justify-content:center;
+    font-family:"Space Grotesk"; font-weight:700; font-size:16px; color:#fff}
+  .brand-txt{display:flex; flex-direction:column; line-height:1.15; min-width:0}
+  .brand-txt .a{font-family:"Space Grotesk"; font-weight:600; font-size:15px}
+  .brand-txt .b{font-size:11px; color:#92A0B6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .cycle-chip{display:flex; align-items:center; gap:9px; background:var(--ink-2); border:1px solid rgba(255,255,255,.08);
+    border-radius:999px; padding:6px 13px 6px 11px; font-size:12px; color:#C4CEDC}
+  .pulse{width:8px; height:8px; border-radius:50%; background:var(--good); position:relative}
+  .pulse::after{content:""; position:absolute; inset:-4px; border-radius:50%; border:1px solid var(--good); opacity:.5; animation:ping 2.4s ease-out infinite}
+  @keyframes ping{0%{transform:scale(.7);opacity:.6}80%,100%{transform:scale(1.9);opacity:0}}
+  .cycle-chip b{color:#EAF0F8; font-weight:600}
+
+  .wrap{max-width:1320px; margin:0 auto; padding:22px 24px 60px}
+  .role-head{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:18px}
+  .role-head h1{font-family:"Space Grotesk"; font-weight:600; font-size:26px; line-height:1.12; margin:6px 0 4px; letter-spacing:-.01em}
+  .role-head .sub{color:var(--muted); font-size:13.5px; max-width:560px}
+
+  .filters{display:flex; gap:6px; flex-wrap:wrap}
+  .fbtn{font-family:"IBM Plex Mono",monospace; font-size:11.5px; border:1px solid var(--line); background:var(--card);
+    color:var(--muted); padding:7px 13px; border-radius:8px; cursor:pointer; transition:all .15s}
+  .fbtn:hover{border-color:var(--ink-3); color:var(--text)}
+  .fbtn[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:#fff}
+  .fbtn:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+
+  .grid{display:grid; grid-template-columns:repeat(12,1fr); gap:16px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 18px 16px}
+  .card.dark{background:var(--ink); border-color:var(--ink-2); color:#E7EDF6}
+  .card.dark .eyebrow{color:#7B89A1}
+  .col-8{grid-column:span 8} .col-7{grid-column:span 7} .col-6{grid-column:span 6}
+  .col-5{grid-column:span 5} .col-4{grid-column:span 4} .col-12{grid-column:span 12}
+  .card-head{display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:14px}
+  .card-head h2{font-family:"Space Grotesk"; font-weight:600; font-size:15px; margin:0}
+  .card-head .meta{font-size:11.5px; color:var(--faint)}
+  .section-rule{grid-column:span 12; display:flex; align-items:center; gap:14px; margin:14px 0 0}
+  .section-rule .ln{flex:1; height:1px; background:var(--line)}
+  .section-rule .lbl{font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3)}
+
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--ink-2); border-radius:12px; overflow:hidden; margin-top:4px}
+  .kpi{background:var(--ink); padding:15px 16px}
+  .kpi .lbl{font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#7B89A1}
+  .kpi .val{font-family:"Space Grotesk"; font-weight:700; font-size:29px; color:#fff; line-height:1; margin:9px 0 7px; letter-spacing:-.02em}
+  .kpi .val small{font-size:15px; font-weight:600; color:#9AA8BE}
+  .kpi .dlt{font-family:"IBM Plex Mono"; font-size:11px; display:inline-flex; align-items:center; gap:5px}
+  .up{color:#3FD3A8} .down{color:#FF6B9D} .flat{color:#9AA8BE}
+
+  svg{display:block; width:100%; height:auto; overflow:visible}
+  .band-wrap{position:relative}
+  .tt{position:absolute; pointer-events:none; background:var(--ink); color:#EAF0F8; border:1px solid var(--ink-3);
+    border-radius:8px; padding:8px 10px; font-size:11.5px; line-height:1.45; opacity:0; transform:translate(-50%,-112%);
+    transition:opacity .12s; white-space:nowrap; z-index:20; box-shadow:0 8px 24px rgba(16,26,44,.35)}
+  .tt b{font-family:"IBM Plex Mono"; font-weight:600}
+  .legend{display:flex; gap:18px; flex-wrap:wrap; margin-top:12px; font-size:11.5px; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:7px}
+  .swatch{width:18px; height:3px; border-radius:2px; display:inline-block}
+  .swatch.band{height:11px; width:18px; border-radius:3px; background:var(--band)}
+  .swatch.dot{width:9px;height:9px;border-radius:50%}
+
+  .rowlist{display:flex; flex-direction:column; gap:13px; margin-top:4px}
+  .rl{display:grid; grid-template-columns:108px 1fr 58px; align-items:center; gap:10px}
+  .rl .name{font-size:12.5px; color:var(--text); font-weight:500}
+  .rl .name s{display:block; text-decoration:none; font-size:10.5px; color:var(--faint); font-family:"IBM Plex Mono"}
+  .bar-track{height:9px; background:var(--line-soft); border-radius:6px; position:relative; overflow:hidden}
+  .bar-fill{position:absolute; top:0; bottom:0; border-radius:6px; transition:width .5s ease}
+  .rl .num{font-family:"IBM Plex Mono"; font-size:12.5px; text-align:right; font-weight:500}
+  .div-track{height:9px; position:relative; border-radius:6px; background:var(--line-soft)}
+  .div-mid{position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:var(--faint); opacity:.5}
+  .div-fill{position:absolute; top:0; bottom:0; border-radius:6px; transition:all .5s ease}
+
+  .cadence{display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--line); border-radius:12px; overflow:hidden; margin-top:4px}
+  .step{background:var(--card); padding:14px 13px}
+  .step .n{font-family:"IBM Plex Mono"; font-size:11px; color:var(--faint)}
+  .step .t{font-family:"Space Grotesk"; font-weight:600; font-size:13px; margin:7px 0 5px; line-height:1.2}
+  .step .d{font-size:11px; color:var(--muted)}
+  .step .st{display:inline-flex; align-items:center; gap:6px; margin-top:9px; font-family:"IBM Plex Mono"; font-size:10.5px}
+  .st .d0{width:7px; height:7px; border-radius:50%}
+  .done .d0{background:var(--good)} .done .st{color:var(--good)}
+  .active{background:#FBFCFE; box-shadow:inset 0 2px 0 var(--signal)}
+  .active .d0{background:var(--signal)} .active .st{color:var(--signal)}
+  .todo .d0{background:var(--faint)} .todo .st{color:var(--faint)}
+
+  .insight{display:flex; gap:13px; padding:13px 0; border-top:1px solid var(--line-soft)}
+  .insight:first-child{border-top:none; padding-top:2px}
+  .ic{flex:none; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:"Space Grotesk"; font-weight:700; font-size:13px}
+  .ic.s{background:var(--signal-soft); color:var(--signal)} .ic.g{background:var(--good-soft); color:var(--good)} .ic.w{background:var(--warn-soft); color:var(--warn)}
+  .insight .ih{font-weight:600; font-size:13px; margin:0 0 3px} .insight .ib{font-size:12.5px; color:var(--muted); margin:0}
+  .insight .tag{font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.06em; color:var(--faint); text-transform:uppercase}
+
+  .teamgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .tstat .v{font-family:"Space Grotesk"; font-weight:700; font-size:23px; line-height:1}
+  .tstat .l{font-size:11.5px; color:#7B89A1; margin-top:5px}
+  .cap-row{display:grid; grid-template-columns:130px 1fr; gap:10px; align-items:center; padding:7px 0}
+  .cap-row .cl{font-size:12px; color:#C4CEDC}
+  .dots{display:flex; gap:4px}
+  .dot{width:9px; height:9px; border-radius:2px; background:rgba(255,255,255,.16)}
+  .dot.on{background:var(--signal)}
+
+  /* financial */
+  .scenario{display:flex; gap:6px; align-items:center}
+  .toggle{display:inline-flex; background:var(--canvas); border:1px solid var(--line); border-radius:9px; padding:3px}
+  .toggle button{font-family:"IBM Plex Mono"; font-size:11.5px; border:none; background:none; color:var(--muted); padding:7px 14px; border-radius:7px; cursor:pointer}
+  .toggle button[aria-pressed="true"]{background:var(--ink); color:#fff}
+  .toggle button:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+  .stmt{width:100%; border-collapse:collapse; font-size:12.5px}
+  .stmt th{text-align:left; font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:500; padding:0 0 9px}
+  .stmt th.r,.stmt td.r{text-align:right; font-family:"IBM Plex Mono"; font-variant-numeric:tabular-nums}
+  .stmt td{padding:5px 0; border-bottom:1px solid var(--line-soft)}
+  .stmt tr.sub td{font-weight:600; border-top:1px solid var(--line); border-bottom:none}
+  .stmt tr.total td{font-weight:700; border-top:2px solid var(--ink); border-bottom:none; padding-top:7px}
+  .stmt tr.head td{color:var(--ink-3); font-family:"IBM Plex Mono"; font-size:10px; letter-spacing:.1em; text-transform:uppercase; border-bottom:none; padding-top:11px; padding-bottom:3px}
+  .stmt td.neg{color:var(--muted)}
+  .stmt tr.hi td{background:var(--signal-soft)}
+  .stmt tr.hi td:first-child{border-left:3px solid var(--signal); padding-left:8px}
+  .d-fav{color:var(--good); font-size:11px} .d-unf{color:var(--signal); font-size:11px}
+  .fin-kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--ink-2); border-radius:12px; overflow:hidden}
+  .map{display:flex; flex-direction:column; gap:11px}
+  .maprow{border:1px solid var(--line-soft); border-radius:10px; padding:12px 13px}
+  .maprow .mh{font-weight:600; font-size:12.5px; margin:0 0 4px}
+  .maprow .mb{font-size:11.5px; color:var(--muted); margin:0}
+  .chips{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap}
+  .chip{font-family:"IBM Plex Mono"; font-size:9.5px; letter-spacing:.04em; padding:3px 7px; border-radius:5px; background:var(--canvas); color:var(--ink-3)}
+  .chip.pl{background:rgba(229,0,109,.10); color:var(--signal)} .chip.bs{background:rgba(40,56,90,.10); color:var(--ink-3)} .chip.cf{background:var(--good-soft); color:var(--good)}
+
+  .road{display:flex; flex-direction:column; gap:10px; margin-top:2px}
+  .ritem{display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:11px 13px; border:1px solid var(--line-soft); border-radius:10px}
+  .ritem .rt{font-weight:500; font-size:12.5px} .ritem .rd{font-size:11px; color:var(--muted); margin-top:2px}
+  .pill{font-family:"IBM Plex Mono"; font-size:10px; padding:4px 8px; border-radius:6px; white-space:nowrap}
+  .pill.live{background:var(--good-soft); color:var(--good)} .pill.build{background:var(--warn-soft); color:var(--warn)} .pill.scope{background:rgba(40,56,90,.08); color:var(--ink-3)}
+
+  footer{max-width:1320px; margin:30px auto 0; padding:0 24px; color:var(--faint); font-size:11.5px}
+  footer .rule{height:1px; background:var(--line); margin-bottom:14px}
+  footer b{color:var(--muted)}
+  .note{font-size:11.5px; color:var(--muted); margin:13px 0 0}
+
+  @media (max-width:1000px){
+    .col-8,.col-7,.col-6,.col-5,.col-4{grid-column:span 12}
+    .kpis,.cadence{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:560px){
+    .wrap{padding:16px 14px 50px} .topbar-inner{padding:12px 14px}
+    .role-head h1{font-size:21px} .kpi .val{font-size:24px}
+    .teamgrid,.fin-kpis{grid-template-columns:1fr}
+    .rl{grid-template-columns:90px 1fr 50px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">IB</div>
+      <div class="brand-txt"><span class="a">Imperial Brands</span><span class="b">Demand &amp; Forecasting Lead · Germany</span></div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="cycle-chip"><span class="pulse"></span>IBP Cycle <b>M06 / FY26</b> · Reconciliation</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="role-head">
+    <div>
+      <p class="eyebrow">Demand planning command centre</p>
+      <h1>Germany demand, forecast &amp; financial performance</h1>
+      <p class="sub">One view across the German portfolio — combustibles through Next Generation Products — connecting forecast accuracy and bias to the working capital, margin and cash they drive.</p>
+    </div>
+    <div>
+      <p class="eyebrow" style="margin-bottom:7px">Filter category</p>
+      <div class="filters" id="filters" role="group" aria-label="Filter by product category">
+        <button class="fbtn" data-cat="all" aria-pressed="true">All categories</button>
+        <button class="fbtn" data-cat="fmc" aria-pressed="false">FMC</button>
+        <button class="fbtn" data-cat="finecut" aria-pressed="false">Fine cut</button>
+        <button class="fbtn" data-cat="vapour" aria-pressed="false">Vapour · blu</button>
+        <button class="fbtn" data-cat="heated" aria-pressed="false">Heated · Pulze</button>
+        <button class="fbtn" data-cat="oral" aria-pressed="false">Oral · Zone</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- hero -->
+    <section class="card dark col-8">
+      <div class="card-head">
+        <div><p class="eyebrow">Signature view · forecast signal band</p>
+          <h2 style="color:#fff" id="bandTitle">All categories — demand vs forecast corridor</h2></div>
+        <span class="meta" style="color:#7B89A1">Rolling 12 months · net revenue (€M)</span>
+      </div>
+      <div class="band-wrap">
+        <svg id="band" viewBox="0 0 820 300" role="img" aria-label="Actual demand against the forecast tolerance corridor"></svg>
+        <div class="tt" id="tt"></div>
+      </div>
+      <div class="legend">
+        <span><i class="swatch band"></i> ±5% accuracy corridor</span>
+        <span><i class="swatch" style="background:#6E7FA6;height:2px;border-top:0"></i> Forecast (consensus)</span>
+        <span><i class="swatch dot" style="background:#fff"></i> Actual</span>
+        <span><i class="swatch dot" style="background:var(--signal)"></i> Out of corridor</span>
+      </div>
+    </section>
+
+    <section class="card dark col-4" style="display:flex; flex-direction:column; justify-content:center">
+      <p class="eyebrow">Headline KPIs · selected scope</p>
+      <div class="kpis" id="kpis"></div>
+      <p style="font-size:11px; color:#7B89A1; margin:14px 0 0; line-height:1.5">
+        Accuracy = <span class="mono">1 − wMAPE</span> (revenue-weighted, <span class="mono">Σ|A−F|/ΣA</span>); bias = <span class="mono">(ΣF−ΣA)/ΣA</span>, positive = over-forecast. Deltas vs prior cycle. FVA modelled vs naïve.
+      </p>
+    </section>
+
+    <section class="card col-7">
+      <div class="card-head"><div><p class="eyebrow">Where accuracy lives</p><h2>Forecast accuracy by category</h2></div>
+        <span class="meta">FY26 · 1 − wMAPE</span></div>
+      <div class="rowlist" id="accList"></div>
+    </section>
+
+    <section class="card col-5">
+      <div class="card-head"><div><p class="eyebrow">Direction of error</p><h2>Forecast bias</h2></div>
+        <span class="meta">under ◂ 0 ▸ over</span></div>
+      <div class="rowlist" id="biasList"></div>
+      <p class="note">NGP categories run a structural <b>over-forecast</b> of +9% to +14% — launch optimism ahead of a maturing base. That is the bias building excess short-life stock.</p>
+    </section>
+
+    <section class="card col-12">
+      <div class="card-head"><div><p class="eyebrow">How the plan gets made</p><h2>Integrated Business Planning — monthly cadence</h2></div>
+        <span class="meta">M06 / FY26 · alignment across functions</span></div>
+      <div class="cadence" id="cadence"></div>
+    </section>
+
+    <section class="card col-7">
+      <div class="card-head"><div><p class="eyebrow">From data to decision</p><h2>Insights &amp; recommended actions</h2></div>
+        <span class="meta">For the management business review</span></div>
+      <div id="insights"></div>
+    </section>
+
+    <section class="card dark col-5">
+      <div class="card-head"><div><p class="eyebrow">People &amp; capability</p><h2 style="color:#fff">Forecasting team</h2></div></div>
+      <div class="teamgrid">
+        <div class="tstat"><div class="v" style="color:#fff">5</div><div class="l">Planners across DE portfolio</div></div>
+        <div class="tstat"><div class="v" style="color:#3FD3A8">+2.2pp</div><div class="l">Portfolio accuracy vs FY25</div></div>
+        <div class="tstat"><div class="v" style="color:#fff">94%</div><div class="l">Consensus meetings on cadence*</div></div>
+        <div class="tstat"><div class="v" style="color:#fff">+6.9pp</div><div class="l">Forecast value added vs naïve*</div></div>
+      </div>
+      <p class="eyebrow" style="margin:18px 0 8px; color:#7B89A1">Capability build · target depth</p>
+      <div id="cap"></div>
+      <p style="font-size:10.5px; color:#56627A; margin:12px 0 0">*Illustrative planning assumptions, not measured outputs.</p>
+    </section>
+
+    <!-- ===================== FINANCIAL IMPACT ===================== -->
+    <div class="section-rule"><span class="lbl">Financial impact</span><span class="ln"></span></div>
+
+    <section class="card col-12">
+      <div class="card-head">
+        <div><p class="eyebrow">Forecast performance → financial statements</p>
+          <h2>What demand accuracy is worth — FY26, Germany (€M, illustrative)</h2></div>
+        <div class="scenario">
+          <span class="meta" style="margin-right:4px">Scenario</span>
+          <div class="toggle" id="scenToggle" role="group" aria-label="Choose scenario">
+            <button data-s="base" aria-pressed="true">Baseline</button>
+            <button data-s="impr" aria-pressed="false">Improved forecast</button>
+          </div>
+        </div>
+      </div>
+      <div class="fin-kpis" id="finKpis" style="margin-bottom:16px"></div>
+
+      <div class="grid" style="gap:16px">
+        <div class="col-7">
+          <div class="card-head" style="margin-bottom:8px"><h2 style="font-size:13px">Operating profit bridge</h2>
+            <span class="meta">Improved vs Baseline · EBIT €M</span></div>
+          <svg id="waterfall" viewBox="0 0 700 240" role="img" aria-label="EBIT bridge from baseline to improved forecast"></svg>
+        </div>
+        <div class="col-5">
+          <div class="card-head" style="margin-bottom:8px"><h2 style="font-size:13px">How forecast error reaches the books</h2></div>
+          <div class="map">
+            <div class="maprow"><p class="mh">Over-forecast (NGP, +9–14%)</p>
+              <p class="mb">Builds excess, short shelf-life stock that ages out.</p>
+              <div class="chips"><span class="chip bs">BS · inventory ↑, cash ↓</span><span class="chip cf">CF · working-capital outflow</span><span class="chip pl">P&amp;L · write-down + holding</span></div></div>
+            <div class="maprow"><p class="mh">Under-forecast (Q4 combustible peaks)</p>
+              <p class="mb">Oct/Dec sell-out above plan → stockouts &amp; rushed supply.</p>
+              <div class="chips"><span class="chip pl">P&amp;L · expedite freight</span><span class="chip pl">P&amp;L · lost margin (memo)</span></div></div>
+            <div class="maprow"><p class="mh">Lower accuracy</p>
+              <p class="mb">Demands higher safety stock to hold service — capital tied up. Tightening it releases cash.</p>
+              <div class="chips"><span class="chip bs">BS · inventory</span><span class="chip cf">CF · cash released</span></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card col-4">
+      <div class="card-head"><div><p class="eyebrow">Income statement</p><h2>Profit &amp; loss</h2></div></div>
+      <table class="stmt"><thead><tr><th>€M</th><th class="r">FY26</th><th class="r" id="plDh"></th></tr></thead>
+        <tbody id="plBody"></tbody></table>
+    </section>
+
+    <section class="card col-4">
+      <div class="card-head"><div><p class="eyebrow">Statement of position</p><h2>Balance sheet</h2></div></div>
+      <table class="stmt"><thead><tr><th>€M</th><th class="r">Close</th><th class="r" id="bsDh"></th></tr></thead>
+        <tbody id="bsBody"></tbody></table>
+    </section>
+
+    <section class="card col-4">
+      <div class="card-head"><div><p class="eyebrow">Cash movement</p><h2>Cash flow</h2></div></div>
+      <table class="stmt"><thead><tr><th>€M</th><th class="r">FY26</th><th class="r" id="cfDh"></th></tr></thead>
+        <tbody id="cfBody"></tbody></table>
+    </section>
+
+    <section class="card col-12">
+      <p class="note" style="margin:0"><b>Reading the model.</b> The highlighted lines — forecast-error costs in the P&amp;L, inventory on the balance sheet, the inventory movement in cash flow — are the lines this role moves. Switching to <b>Improved forecast</b> tightens NGP bias and serves the Q4 peak: it lifts net income <b>+€18.3M (+16.6%)</b>, releases <b>€32M</b> of inventory, and improves operating cash flow <b>+€46.3M</b>, funding an extra €30M of debt repayment. Both scenarios are fully articulated and balance (assets = liabilities + equity).</p>
+    </section>
+
+    <div class="section-rule"><span class="lbl">Continuous improvement</span><span class="ln"></span></div>
+    <section class="card col-12">
+      <div class="card-head"><div><p class="eyebrow">Digitalisation &amp; automation</p><h2>Roadmap — closing the NGP bias, releasing cash</h2></div></div>
+      <div class="road" id="road"></div>
+    </section>
+  </div>
+</div>
+
+<footer>
+  <div class="rule"></div>
+  <p style="margin:0 0 6px"><b>Illustrative scenario.</b> Figures are simulated to demonstrate how this role would be run, not actual Imperial Brands data. Demand is modelled as net revenue (€M) so categories aggregate validly; portfolio accuracy is volume/revenue-weighted MAPE. Financial statements are a simplified, internally consistent three-statement model (German entity, 30% tax) that balances and articulates across all three statements.</p>
+  <p style="margin:0">Categories reflect the German portfolio: FMC (JPS, Gauloises, West, Davidoff), fine cut, vapour (blu), heated (Pulze), modern oral (Zone). Built by <b>Lancelot Muaiava</b> as an interview artifact · demand &amp; supply planning · SAP IBP · S&amp;OP / IBP facilitation.</p>
+</footer>
+
+<script>
+const MONTHS=['Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'];
+const DATA={
+ fmc:{name:'FMC',sub:'cigarettes',fva:'+5.1pp',
+  ac:[55.6,56.6,54.1,57.2,63.6,58.2,70.3,53.2,53.2,57.0,59.8,59.1],
+  fc:[55.3,55.9,54.2,58.2,58.8,59.4,62.5,51.2,53.6,57.7,58.8,58.2]},
+ finecut:{name:'Fine cut',sub:'RYO / MYO',fva:'+4.4pp',
+  ac:[19.1,18.7,18.6,20.5,21.2,20.2,22.7,17.0,17.4,19.7,19.5,20.2],
+  fc:[19.0,19.2,18.6,20.0,20.4,20.4,21.7,17.6,18.4,19.8,20.2,20.0]},
+ vapour:{name:'Vapour · blu',sub:'NGP',fva:'+12.1pp',
+  ac:[9.1,9.1,6.9,9.3,10.2,10.1,9.1,9.0,9.0,9.7,11.8,10.1],
+  fc:[9.7,10.0,9.9,10.5,11.0,10.7,11.6,10.2,10.7,11.3,11.5,11.8]},
+ heated:{name:'Heated · Pulze',sub:'NGP',fva:'+13.6pp',
+  ac:[7.1,8.1,6.8,7.7,8.2,8.0,7.3,7.6,9.2,6.8,9.3,8.8],
+  fc:[7.9,8.2,8.1,8.6,9.0,8.8,9.5,8.3,8.8,9.2,9.4,9.7]},
+ oral:{name:'Oral · Zone',sub:'modern oral',fva:'+14.0pp',
+  ac:[5.8,8.4,7.2,5.8,7.3,7.7,7.4,7.4,7.0,8.1,9.1,7.1],
+  fc:[7.2,7.4,7.4,7.8,8.2,8.0,8.6,7.6,8.0,8.4,8.6,8.8]},
+};
+const ORDER=['fmc','finecut','vapour','heated','oral'];
+const PRIOR={all:95.0,fmc:95.5,finecut:95.8,vapour:83.5,heated:85.5,oral:85.0};
+
+function aggregate(){const fc=Array(12).fill(0),ac=Array(12).fill(0);
+  ORDER.forEach(k=>DATA[k].fc.forEach((v,i)=>{fc[i]+=v;ac[i]+=DATA[k].ac[i];}));
+  const fvaW=ORDER.reduce((s,k)=>s+parseFloat(DATA[k].fva)*DATA[k].ac.reduce((a,b)=>a+b,0),0)/ac.reduce((a,b)=>a+b,0);
+  return {name:'All categories',fc,ac,fva:(fvaW>=0?'+':'')+fvaW.toFixed(1)+'pp'};}
+const series=c=>c==='all'?aggregate():DATA[c];
+
+function stats(fc,ac){ // true wMAPE + aggregate bias on the scope's series
+  let ae=0,sa=0,sf=0;
+  for(let i=0;i<fc.length;i++){ae+=Math.abs(ac[i]-fc[i]); sa+=ac[i]; sf+=fc[i];}
+  const wmape=ae/sa*100; return {acc:100-wmape, mape:wmape, bias:(sf-sa)/sa*100};
+}
+const fmt=(n,d=1)=>n.toFixed(d);
+const arrow=v=>v>0.05?'▲':v<-0.05?'▼':'—';
+let CURRENT='all';
+
+function renderKPIs(cat,s){
+  const st=stats(s.fc,s.ac), dAcc=st.acc-(PRIOR[cat]||st.acc);
+  const tiles=[
+    {l:'Forecast accuracy',v:fmt(st.acc,1),u:'%',d:dAcc,good:dAcc>=0},
+    {l:'Weighted MAPE',v:fmt(st.mape,1),u:'%',d:-dAcc,inv:true,good:dAcc>=0},
+    {l:'Forecast bias',v:(st.bias>0?'+':'')+fmt(st.bias,1),u:'%',biasMode:true,bias:st.bias},
+    {l:'Value added',v:s.fva,u:'',static:true},
+  ];
+  document.getElementById('kpis').innerHTML=tiles.map(t=>{
+    let dlt='';
+    if(t.static) dlt=`<span class="dlt flat">modelled vs naïve</span>`;
+    else if(t.biasMode){const c=Math.abs(t.bias)<2?'flat':(t.bias>0?'down':'up');
+      const lab=Math.abs(t.bias)<2?'within tolerance':(t.bias>0?'over-forecast':'under-forecast');
+      dlt=`<span class="dlt ${c}">${lab}</span>`;}
+    else{const c=t.good?'up':'down';
+      dlt=`<span class="dlt ${c}">${arrow(t.inv?-t.d:t.d)} ${(t.d>=0?'+':'')}${fmt(t.d,1)}pp cycle</span>`;}
+    return `<div class="kpi"><div class="lbl">${t.l}</div><div class="val">${t.v}<small>${t.u}</small></div>${dlt}</div>`;
+  }).join('');
+}
+
+function renderBand(s){
+  const W=820,H=300,pad={t:24,r:14,b:34,l:48},n=s.fc.length,tol=0.05;
+  const up=s.fc.map(v=>v*(1+tol)),lo=s.fc.map(v=>v*(1-tol));
+  let mx=Math.max(...up,...s.ac),mn=Math.min(...lo,...s.ac);const pd=(mx-mn)*0.12;mx+=pd;mn-=pd;if(mn<0)mn=0;
+  const px=i=>pad.l+i*(W-pad.l-pad.r)/(n-1), py=v=>pad.t+(1-(v-mn)/(mx-mn))*(H-pad.t-pad.b);
+  let g='';for(let i=0;i<=4;i++){const val=mn+(mx-mn)*i/4,y=py(val);
+    g+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="rgba(255,255,255,.07)"/>`;
+    g+=`<text x="${pad.l-9}" y="${y+3.5}" text-anchor="end" font-family="IBM Plex Mono" font-size="10" fill="#5E6E8C">${Math.round(val)}</text>`;}
+  MONTHS.forEach((m,i)=>{if(i%2===0||i===n-1)g+=`<text x="${px(i)}" y="${H-pad.b+18}" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" fill="#5E6E8C">${m}</text>`;});
+  let top='',bot='';up.forEach((v,i)=>top+=`${px(i)},${py(v)} `);for(let i=n-1;i>=0;i--)bot+=`${px(i)},${py(lo[i])} `;
+  const band=`<polygon points="${top}${bot}" fill="rgba(110,127,166,.16)"/>`;
+  let fcp='M';s.fc.forEach((v,i)=>fcp+=`${px(i)},${py(v)} `);
+  const fline=`<path d="${fcp}" fill="none" stroke="#6E7FA6" stroke-width="1.6" stroke-dasharray="5 4"/>`;
+  let acp='M';s.ac.forEach((v,i)=>acp+=`${px(i)},${py(v)} `);
+  const aline=`<path d="${acp}" fill="none" stroke="#EAF0F8" stroke-width="2.4" stroke-linejoin="round"/>`;
+  let dots='';s.ac.forEach((v,i)=>{const br=v>up[i]||v<lo[i];const c=br?'var(--signal)':'#EAF0F8';const r=br?5:3.6;
+    const dev=(s.fc[i]-v)/v*100;
+    dots+=`<circle class="pt" cx="${px(i)}" cy="${py(v)}" r="${r}" fill="${c}" stroke="${br?'#fff':'rgba(16,26,44,.6)'}" stroke-width="${br?1.5:1}" tabindex="0" style="cursor:pointer" data-m="${MONTHS[i]}" data-a="${fmt(v,1)}" data-f="${fmt(s.fc[i],1)}" data-dev="${(dev>0?'+':'')+fmt(dev,1)}" data-br="${br}"/>`;
+    if(br)dots+=`<circle cx="${px(i)}" cy="${py(v)}" r="10" fill="none" stroke="var(--signal)" stroke-width="1" opacity=".5"/>`;});
+  document.getElementById('band').innerHTML=g+band+fline+aline+dots;
+  const svg=document.getElementById('band'),tt=document.getElementById('tt'),wr=svg.closest('.band-wrap');
+  svg.querySelectorAll('.pt').forEach(pt=>{
+    const show=()=>{const r=pt.getBoundingClientRect(),w=wr.getBoundingClientRect();
+      tt.style.left=(r.left-w.left+r.width/2)+'px';tt.style.top=(r.top-w.top)+'px';
+      const br=pt.dataset.br==='true';
+      tt.innerHTML=`<b>${pt.dataset.m}</b> · ${br?'<span style="color:#FF6B9D">out of corridor</span>':'in corridor'}<br>Actual <b>€${pt.dataset.a}M</b> &nbsp; Forecast <b>€${pt.dataset.f}M</b><br>Deviation <b>${pt.dataset.dev}%</b>`;
+      tt.style.opacity='1';};
+    pt.addEventListener('mouseenter',show);pt.addEventListener('focus',show);
+    pt.addEventListener('mouseleave',()=>tt.style.opacity='0');pt.addEventListener('blur',()=>tt.style.opacity='0');});
+}
+
+function renderLists(){
+  const rows=ORDER.map(k=>{const s=stats(DATA[k].fc,DATA[k].ac);return {k,...DATA[k],...s};});
+  document.getElementById('accList').innerHTML=rows.map(r=>{
+    const col=r.acc>=92?'var(--good)':r.acc>=82?'var(--warn)':'var(--signal)';
+    const w=Math.max(4,(r.acc-70)/(100-70)*100);
+    return `<div class="rl"><div class="name">${r.name}<s>${r.sub}</s></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${col}"></div></div>
+      <div class="num">${fmt(r.acc,1)}%</div></div>`;}).join('');
+  document.getElementById('biasList').innerHTML=rows.map(r=>{
+    const mag=Math.min(Math.abs(r.bias)/15,1)*50,over=r.bias>0;
+    const col=Math.abs(r.bias)<2?'var(--faint)':(over?'var(--signal)':'var(--good)');
+    const fill=over?`left:50%; width:${mag}%; background:${col}`:`right:50%; width:${mag}%; background:${col}`;
+    return `<div class="rl"><div class="name">${r.name}</div>
+      <div class="div-track"><div class="div-mid"></div><div class="div-fill" style="${fill}"></div></div>
+      <div class="num" style="color:${col}">${(r.bias>0?'+':'')}${fmt(r.bias,1)}%</div></div>`;}).join('');
+}
+
+const CADENCE=[
+ {t:'Portfolio &amp; product review',d:'NPD pipeline and phase-in / phase-out aligned with marketing.',s:'done',w:'Wk 1'},
+ {t:'Demand review',d:'Statistical baseline challenged with commercial; consensus signed off.',s:'done',w:'Wk 2'},
+ {t:'Supply review',d:'Capacity, supply &amp; inventory feasibility tested against demand.',s:'done',w:'Wk 2'},
+ {t:'Reconciliation',d:'Gaps, risks &amp; scenarios resolved; assumptions documented.',s:'active',w:'Wk 3'},
+ {t:'Management business review',d:'One integrated plan to senior stakeholders to commit.',s:'todo',w:'Wk 4'},
+];
+document.getElementById('cadence').innerHTML=CADENCE.map((c,i)=>{
+  const lbl=c.s==='done'?'Complete':c.s==='active'?'In progress':'Upcoming';
+  return `<div class="step ${c.s}"><div class="n">0${i+1} · ${c.w}</div><div class="t">${c.t}</div>
+    <div class="d">${c.d}</div><div class="st"><span class="d0"></span>${lbl}</div></div>`;}).join('');
+
+const INSIGHTS=[
+ {c:'s',i:'!',tag:'Bias · NGP',h:'blu, Pulze &amp; Zone over-forecast by +9% to +14%',
+  b:'Plans sit structurally above sell-out, building short shelf-life stock that drives write-downs. Recommend a downward consensus challenge and tying NGP supply to weekly sell-out — the single biggest cash and margin lever (see financial impact).'},
+ {c:'w',i:'⊘',tag:'Aggregation risk',h:'Headline accuracy nets out the NGP gap',
+  b:'The portfolio reads ~97% because category over- and under-forecasts offset; on a revenue-weighted basis it is ~95%, and NGP alone runs at 86–88%. Govern accuracy and bias at category level, not on the netted total.'},
+ {c:'w',i:'≈',tag:'Seasonality',h:'Q4 combustible peaks under-served',
+  b:'October and December sell-out ran above plan, triggering expedite freight and lost margin. Add a promotional / seasonal overlay and demand sensing for the peak.'},
+ {c:'g',i:'✓',tag:'Stability · core',h:'FMC &amp; fine cut held ~97% with minimal bias',
+  b:'The mature base is well-controlled — shift planner effort from maintenance toward NGP volatility, where the gap and the commercial upside are largest.'},
+];
+document.getElementById('insights').innerHTML=INSIGHTS.map(x=>`<div class="insight"><div class="ic ${x.c}">${x.i}</div>
+  <div><span class="tag">${x.tag}</span><p class="ih">${x.h}</p><p class="ib">${x.b}</p></div></div>`).join('');
+
+const CAP=[['Statistical forecasting',5],['IBP / S&amp;OP facilitation',4],['SAP IBP &amp; data fluency',4],['Commercial storytelling',3],['Automation / Python',3]];
+document.getElementById('cap').innerHTML=CAP.map(([l,n])=>{let d='';for(let i=0;i<5;i++)d+=`<span class="dot ${i<n?'on':''}"></span>`;
+  return `<div class="cap-row"><div class="cl">${l}</div><div class="dots">${d}</div></div>`;}).join('');
+
+const ROAD=[
+ {t:'NGP bias-correction &amp; downward consensus challenge',d:'Weekly sell-out signal vs plan; structural over-forecast flagged before supply commits.',s:'build',p:'In build'},
+ {t:'Automated accuracy &amp; bias exception reporting',d:'Replaces the manual cycle pack — live category-level exceptions.',s:'live',p:'Live'},
+ {t:'Promo &amp; event lift modelling (Q4 combustibles)',d:'Calendar-aware features to serve the peak and cut expedite freight.',s:'build',p:'In build'},
+ {t:'ML baseline + planner-override workflow in SAP IBP',d:'Machine baseline with documented value-added overrides.',s:'scope',p:'Scoping'},
+];
+document.getElementById('road').innerHTML=ROAD.map(r=>`<div class="ritem"><div><div class="rt">${r.t}</div><div class="rd">${r.d}</div></div><span class="pill ${r.s}">${r.p}</span></div>`).join('');
+
+/* ================= FINANCIALS ================= */
+const OPEN={cash:95,rec:150,inv:245,ppe:520,intang:300,pay:180,debt:400,other:175,share:200,re:355};
+const FIN={
+ base:{rev:1230,cogs:640,gp:590,sga:330,da:60,err:28.0,ebit:172.0,fin:14.0,pbt:158.0,tax:47.4,ni:110.6,
+       cash:113.6,rec:152,inv:272,ppe:525,intang:300,pay:182,debt:400,other:175,share:200,re:405.6,ta:1362.6,
+       cfo:143.6,cfi:-65,cff:-60,dcash:18.6,d_rec:2,d_inv:27,d_pay:2,d_debt:0},
+ impr:{rev:1244,cogs:647.3,gp:596.7,sga:330,da:60,err:10.5,ebit:196.2,fin:12.0,pbt:184.2,tax:55.3,ni:128.9,
+       cash:129.9,rec:154,inv:240,ppe:525,intang:300,pay:180,debt:370,other:175,share:200,re:423.9,ta:1348.9,
+       cfo:189.9,cfi:-65,cff:-90,dcash:34.9,d_rec:4,d_inv:-5,d_pay:0,d_debt:-30},
+};
+let SCEN='base';
+const n1=v=>(v<0?'(':'')+Math.abs(v).toFixed(1)+(v<0?')':'');
+function dlt(cur,base,fav){ // fav: +1 higher better, -1 lower better
+  if(SCEN!=='impr')return '';
+  const diff=cur-base; if(Math.abs(diff)<0.05)return '<span class="d-fav">—</span>';
+  const favourable=(fav>0)?diff>0:diff<0;
+  return `<span class="${favourable?'d-fav':'d-unf'}">${diff>0?'+':''}${diff.toFixed(1)}</span>`;
+}
+function row(label,val,base,fav,cls,negstyle){
+  return `<tr class="${cls||''}"><td class="${negstyle?'neg':''}">${label}</td>
+    <td class="r">${typeof val==='number'?n1(val):val}</td>
+    <td class="r">${typeof val==='number'?dlt(val,base,fav):''}</td></tr>`;
+}
+function renderFin(){
+  const s=FIN[SCEN], b=FIN.base;
+  // KPI strip
+  const kp=[
+    {l:'Net income',v:s.ni,base:b.ni,fav:1,u:'€M'},
+    {l:'Inventory (working capital)',v:s.inv,base:b.inv,fav:-1,u:'€M'},
+    {l:'Operating cash flow',v:s.cfo,base:b.cfo,fav:1,u:'€M'},
+  ];
+  document.getElementById('finKpis').innerHTML=kp.map(k=>{
+    let d='';if(SCEN==='impr'){const diff=k.v-k.base;const fav=(k.fav>0)?diff>0:diff<0;
+      d=`<span class="dlt ${fav?'up':'down'}">${diff>0?'+':''}${diff.toFixed(1)} vs baseline</span>`;}
+    else d=`<span class="dlt flat">current performance</span>`;
+    return `<div class="kpi"><div class="lbl">${k.l}</div><div class="val">${k.v.toFixed(1)}<small> ${k.u}</small></div>${d}</div>`;
+  }).join('');
+
+  const dh=SCEN==='impr'?'Δ':'';
+  document.getElementById('plDh').textContent=dh;
+  document.getElementById('bsDh').textContent=dh;
+  document.getElementById('cfDh').textContent=dh;
+
+  // P&L
+  document.getElementById('plBody').innerHTML=
+    row('Net revenue',s.rev,b.rev,1)+
+    row('Cost of goods sold',-s.cogs,-b.cogs,-1,'',1)+
+    row('Gross profit',s.gp,b.gp,1,'sub')+
+    row('SG&amp;A &amp; marketing',-s.sga,-b.sga,-1,'',1)+
+    row('Depreciation &amp; amortisation',-s.da,-b.da,-1,'',1)+
+    row('Forecast-error costs',-s.err,-b.err,-1,'hi',1)+
+    row('Operating profit (EBIT)',s.ebit,b.ebit,1,'sub')+
+    row('Net finance cost',-s.fin,-b.fin,-1,'',1)+
+    row('Profit before tax',s.pbt,b.pbt,1,'sub')+
+    row('Tax (30%)',-s.tax,-b.tax,-1,'',1)+
+    row('Net income',s.ni,b.ni,1,'total');
+
+  // Balance sheet
+  document.getElementById('bsBody').innerHTML=
+    `<tr class="head"><td colspan="3">Assets</td></tr>`+
+    row('Cash &amp; equivalents',s.cash,b.cash,1)+
+    row('Trade receivables',s.rec,b.rec,0)+
+    row('Inventory',s.inv,b.inv,-1,'hi')+
+    row('Property, plant &amp; equipment',s.ppe,b.ppe,0)+
+    row('Intangibles &amp; other',s.intang,b.intang,0)+
+    row('Total assets',s.ta,b.ta,0,'total')+
+    `<tr class="head"><td colspan="3">Liabilities &amp; equity</td></tr>`+
+    row('Trade payables',s.pay,b.pay,0)+
+    row('Borrowings',s.debt,b.debt,-1)+
+    row('Other liabilities',s.other,b.other,0)+
+    row('Share capital',s.share,b.share,0)+
+    row('Retained earnings',s.re,b.re,1)+
+    row('Total liab. &amp; equity',s.ta,b.ta,0,'total');
+
+  // Cash flow
+  document.getElementById('cfBody').innerHTML=
+    row('Net income',s.ni,b.ni,1)+
+    row('+ Depreciation &amp; amortisation',s.da,b.da,0)+
+    row('− Increase in receivables',-s.d_rec,-b.d_rec,-1,'',1)+
+    row('− Increase in inventory',-s.d_inv,-b.d_inv,1,'hi',s.d_inv>0)+
+    row('+ Increase in payables',s.d_pay,b.d_pay,0)+
+    row('Operating cash flow',s.cfo,b.cfo,1,'sub')+
+    row('Capital expenditure',s.cfi,b.cfi,0,'',1)+
+    row('Investing cash flow',s.cfi,b.cfi,0,'sub')+
+    row('Dividends paid',-60,-60,0,'',1)+
+    row('Net debt drawn / (repaid)',s.d_debt,b.d_debt,0,'',s.d_debt<0)+
+    row('Financing cash flow',s.cff,b.cff,0,'sub')+
+    row('Net change in cash',s.dcash,b.dcash,1,'total');
+
+  renderWaterfall();
+}
+
+function renderWaterfall(){
+  const W=700,H=240,pad={t:18,r:14,b:42,l:42};
+  const steps=[
+    {l:'Baseline',v:172.0,type:'base'},
+    {l:'Recovered sales',v:6.7,type:'pos'},
+    {l:'Write-down avoided',v:10.0,type:'pos'},
+    {l:'Holding avoided',v:4.0,type:'pos'},
+    {l:'Expedite avoided',v:3.5,type:'pos'},
+    {l:'Improved',v:196.2,type:'end'},
+  ];
+  const maxV=200, minV=160;
+  const x0=pad.l, bw=(W-pad.l-pad.r)/steps.length, gap=bw*0.26;
+  const py=v=>pad.t+(1-(v-minV)/(maxV-minV))*(H-pad.t-pad.b);
+  let svg='',cum=0;
+  // gridlines
+  for(let g=160;g<=200;g+=10){const y=py(g);
+    svg+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="var(--line-soft)"/>`;
+    svg+=`<text x="${pad.l-8}" y="${y+3.5}" text-anchor="end" font-family="IBM Plex Mono" font-size="9.5" fill="#8A93A3">${g}</text>`;}
+  steps.forEach((s,i)=>{
+    const cx=x0+i*bw+gap/2, w=bw-gap; let top,h,fill;
+    if(s.type==='base'||s.type==='end'){top=py(s.v);h=py(minV)-py(s.v);fill=s.type==='base'?'#28385A':'var(--ink)';
+      cum=s.v;}
+    else{const start=cum,end=cum+s.v;top=py(end);h=py(start)-py(end);fill='var(--good)';cum=end;
+      // connector
+      const yc=py(start);svg+=`<line x1="${x0+(i-1)*bw+bw-gap/2}" y1="${yc}" x2="${cx}" y2="${yc}" stroke="#C7CEDA" stroke-dasharray="3 3"/>`;}
+    svg+=`<rect x="${cx}" y="${top}" width="${w}" height="${Math.max(h,1)}" rx="3" fill="${fill}"/>`;
+    const lab=s.type==='pos'?'+'+s.v.toFixed(1):s.v.toFixed(0);
+    svg+=`<text x="${cx+w/2}" y="${top-6}" text-anchor="middle" font-family="IBM Plex Mono" font-size="10" font-weight="600" fill="${s.type==='pos'?'#11876F':'#131A26'}">${lab}</text>`;
+    svg+=`<text x="${cx+w/2}" y="${H-pad.b+15}" text-anchor="middle" font-family="Inter" font-size="9.5" fill="#5A6678">${s.l.split(' ').map((wd,j)=>`<tspan x="${cx+w/2}" dy="${j===0?0:11}">${wd}</tspan>`).join('')}</text>`;
+  });
+  document.getElementById('waterfall').innerHTML=svg;
+}
+document.getElementById('scenToggle').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;SCEN=b.dataset.s;
+  document.querySelectorAll('#scenToggle button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.s===SCEN));
+  renderFin();
+});
+
+/* orchestrate */
+function setCategory(cat){CURRENT=cat;const s=series(cat);
+  document.getElementById('bandTitle').textContent=(cat==='all'?'All categories':s.name)+' — demand vs forecast corridor';
+  renderBand(s);renderKPIs(cat,s);
+  document.querySelectorAll('.fbtn').forEach(b=>b.setAttribute('aria-pressed',b.dataset.cat===cat));}
+document.getElementById('filters').addEventListener('click',e=>{const b=e.target.closest('.fbtn');if(b)setCategory(b.dataset.cat);});
+
+renderLists();setCategory('all');renderFin();
+window.addEventListener('resize',()=>{renderBand(series(CURRENT));renderWaterfall();});
+</script>
+</body>
+</html>
